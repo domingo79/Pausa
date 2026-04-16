@@ -5,16 +5,29 @@ import base64
 # --- CONFIG ---
 st.set_page_config(page_title="Timer Pausa", page_icon="⌛", layout="centered")
 
+# --- CARICA IMMAGINE ---
+with open("sveglia.png", "rb") as f:
+    IMG_B64 = base64.b64encode(f.read()).decode()
+
 # --- STILI ---
 st.markdown("""
 <style>
-.timer-overlay {
-    position: fixed;
-    top: 430px;
-    left: 50%;
-    transform: translateX(-50%);
+.image-box {
+    border: 3px solid rgba(255,255,255,0.18);
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 6px 40px rgba(0,0,0,0.5);
+}
+.image-box img {
+    width: 100%;
+    display: block;
+}
+.timer-box {
+    position: relative;
+    margin-top: -35%;
+    margin-bottom: 5%;
+    z-index: 10;
     text-align: center;
-    z-index: 1000;
     pointer-events: none;
 }
 .big-timer {
@@ -26,17 +39,15 @@ st.markdown("""
 .sub-text {
     font-size: 1rem;
     color: #ccc;
-    margin-top: 0.3rem;
+    margin-top: 0.4rem;
 }
 .message {
-    font-size: 5rem;
+    font-size: 3rem;
     font-weight: bold;
     color: #FF3B3B;
 }
 </style>
 """, unsafe_allow_html=True)
-
-# --- AUDIO ---
 
 
 def play_sound(file_path):
@@ -62,55 +73,56 @@ if "time_left" not in st.session_state:
 st.markdown("<h1 style='text-align: center;'>⌛ Scegli la durata della pausa!</h1>",
             unsafe_allow_html=True)
 
-
 # --- INPUT ---
 col_a, col_b = st.columns([2, 1])
 with col_a:
     option = st.selectbox("Durata pausa:", ("5 minuti",
-                          "10 minuti", "Personalizzato"))
+                          "10 minuti", "15 minuti", "Personalizzato"))
 with col_b:
     if option == "5 minuti":
         minutes = 5
     elif option == "10 minuti":
         minutes = 10
+    elif option == "15 minuti":
+        minutes = 15
     else:
         minutes = st.number_input(
-            "Minuti:", min_value=1, max_value=60, value=5)
+            "Minuti:", min_value=1, max_value=60, value=20, help="Selziona da 1-60 minuti")
 
-# --- SVEGLIA (immagine statica) ---
-st.image("sveglia.png", use_container_width=True)
+# --- IMMAGINE STABILE ---
+st.markdown(f"""
+<div class="image-box">
+    <img src="data:image/png;base64,{IMG_B64}">
+</div>
+""", unsafe_allow_html=True)
 
-# --- TIMER PLACEHOLDER (sovrapposto via CSS) ---
+# --- TIMER ---
 timer_placeholder = st.empty()
+timer_placeholder.markdown(
+    '<div class="timer-box"></div>', unsafe_allow_html=True)
 
 
 def show_timer(text, color="#888", sub=""):
     sub_html = f'<div class="sub-text">{sub}</div>' if sub else ""
     timer_placeholder.markdown(f"""
-    <div class="timer-overlay">
+    <div class="timer-box">
         <div class="big-timer" style="color:{color};">{text}</div>
         {sub_html}
     </div>
     """, unsafe_allow_html=True)
 
 
-# Stato iniziale
-if not st.session_state.running:
-    timer_placeholder.markdown(
-        '<div class="timer-overlay" style="visibility:hidden;">00:00</div>', unsafe_allow_html=True)
-
-# --- PROGRESS BAR ---
-progress_bar = st.progress(0)
-
 # --- BOTTONI ---
+st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
 col1, col2, col3 = st.columns(3)
 with col1:
-    start = st.button("▶️ Start")
+    start = st.button("▶️ Start", use_container_width=True)
 with col2:
-    pause_btn = st.button("⏸️ Pausa / Riprendi")
+    pause_btn = st.button("⏸️ Pausa / Riprendi", use_container_width=True)
 with col3:
-    reset_btn = st.button("🔄 Reset")
+    reset_btn = st.button("🔄 Reset", use_container_width=True)
 
+# --- LOGICA BOTTONI ---
 if start:
     st.session_state.running = True
     st.session_state.paused = False
@@ -124,8 +136,7 @@ if reset_btn:
     st.session_state.paused = False
     st.session_state.time_left = 0
     timer_placeholder.markdown(
-        '<div class="timer-overlay" style="visibility:hidden;">00:00</div>', unsafe_allow_html=True)
-    progress_bar.progress(0)
+        '<div class="timer-box"></div>', unsafe_allow_html=True)
 
 # --- LOOP TIMER ---
 if st.session_state.running:
@@ -140,7 +151,6 @@ if st.session_state.running:
 
         if not st.session_state.paused:
             show_timer(f"{mins:02d}:{secs:02d}", color=color)
-            progress_bar.progress((total - st.session_state.time_left) / total)
             time.sleep(1)
             st.session_state.time_left -= 1
         else:
@@ -152,11 +162,10 @@ if st.session_state.running:
 
     # --- FINE ---
     timer_placeholder.markdown("""
-    <div class="timer-overlay">
+    <div class="timer-box">
         <div class="message">🔔 PAUSA FINITA!</div>
         <div class="sub-text">Tornate in aula</div>
     </div>
     """, unsafe_allow_html=True)
-    progress_bar.progress(1.0)
     play_sound("alarm.mp3")
     st.session_state.running = False
