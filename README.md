@@ -1,5 +1,7 @@
 # ⌛ Timer Pausa
 
+![Timer Pausa](miniature_Pausa.png)
+
 App web per gestire i tempi di pausa in classe, costruita con **Streamlit**.
 
 ---
